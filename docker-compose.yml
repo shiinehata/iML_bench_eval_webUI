@@ -1,0 +1,13 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # Tên dịch vụ của bạn (có thể đặt tùy ý)
+  web:
+    # Docker sẽ build image từ Dockerfile trong cùng thư mục
+    build: .
+    # Ánh xạ cổng 5000 của máy host vào cổng 5000 của container
+    ports:
+      - "5000:5000"
+    # Tự động khởi động lại container nếu nó bị lỗi
+    restart: always
