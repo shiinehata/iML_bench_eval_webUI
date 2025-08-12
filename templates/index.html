@@ -2,33 +2,200 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Python Web App</title>
+    <title>iML Bench Evaluator</title>
     <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
-        #data-container { margin-top: 20px; font-style: italic; color: #555; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            background-color: #f4f6f9; 
+            color: #333; 
+            margin: 0;
+            padding: 20px;
+        }
+        .main-container { 
+            max-width: 1200px; 
+            margin: 20px auto; 
+            padding: 10px; 
+        }
+        .competition-card { 
+            background: #fff; 
+            padding: 15px 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); 
+            margin-bottom: 15px; 
+            transition: box-shadow 0.2s ease-in-out;
+        }
+        .competition-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+        h1 { 
+            text-align: center; 
+            color: #2c3e50; 
+            font-weight: 600;
+            margin-bottom: 30px;
+        }
+        h2 { 
+            color: #3498db; 
+            border-bottom: 1px solid #ecf0f1; 
+            padding-bottom: 8px; 
+            font-size: 1.2em;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        form {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        button { 
+            background-color: #3498db; 
+            color: white; 
+            padding: 8px 14px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 0.9em;
+            transition: background-color 0.2s;
+        }
+        button:hover { 
+            background-color: #2980b9; 
+        }
+        input[type="file"] { 
+            font-size: 0.9em;
+            flex-grow: 1;
+        }
+        .result { 
+            margin-top: 15px; 
+            padding: 12px; 
+            border-radius: 5px; 
+            font-size: 0.95em;
+        }
+        .result.success { 
+            background-color: #eafaf1; 
+            border-left: 4px solid #2ecc71; 
+        }
+        .result.error { 
+            background-color: #fbeee6; 
+            border-left: 4px solid #e74c3c; 
+        }
+        .result-title { 
+            font-weight: bold; 
+            margin-bottom: 8px; 
+        }
+        .clear-button {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 8px 15px;
+            background-color: #e74c3c;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 0.9em;
+            transition: background-color 0.2s;
+        }
+        .clear-button:hover {
+            background-color: #c0392b;
+        }
+        .competitions-container {
+            display: flex;
+            gap: 100px;
+        }
+        .column {
+            flex: 1;
+        }
+        .result p { 
+            margin: 3px 0; 
+        }
     </style>
 </head>
 <body>
-    <h1>Chào mừng đến với Web App bằng Python!</h1>
-    <p>Đây là trang HTML tĩnh.</p>
-    <button onclick="fetchData()">Lấy dữ liệu động từ Backend</button>
-    <div id="data-container"></div>
+    <div class="main-container">
+        <h1>iML Bench Evaluator</h1>
+        <a href="/clear_results" class="clear-button">Clear All Results</a>
 
-    <script>
-        async function fetchData() {
-            const container = document.getElementById('data-container');
-            container.innerText = 'Đang tải...';
-            try {
-                const response = await fetch('/api/time');
-                const data = await response.json();
-                container.innerText = `${data.message} - Thời gian server: ${data.timestamp}`;
-            } catch (error) {
-                container.innerText = 'Lỗi khi lấy dữ liệu.';
-                console.error('Error:', error);
-            }
-        }
-    </script>
+        <div class="competitions-container">
+            <div class="column">
+                {% for competition in competitions[:5] %}
+                <div class="competition-card">
+                    <h2>{{ competition.replace('_', ' ').title() }}</h2>
+                    <form action="/evaluate" method="post" enctype="multipart/form-data">
+                        <input type="file" name="files[]" accept=".csv" required multiple>
+                        <input type="hidden" name="competition_name" value="{{ competition }}">
+                        <button type="submit">Evaluate</button>
+                    </form>
+
+                    {% if results and results.get(competition) %}
+                        {% for result in results[competition] %}
+                            {% if 'error' in result and result.error %}
+                                <div class="result error">
+                                    <p class="result-title">An error occurred for file: {{ result.filename }}</p>
+                                    <p>{{ result.error }}</p>
+                                </div>
+                            {% elif 'scores' in result %}
+                                <div class="result success">
+                                    <p class="result-title">Results for file: {{ result.filename }}</p>
+                                    {% for metric, value in result.scores.items() %}
+                                        {% if value is mapping %}
+                                            <p><strong>{{ metric.replace('_', ' ').title() }}:</strong></p>
+                                            <ul style="margin: 0; padding-left: 20px;">
+                                            {% for sub_metric, sub_value in value.items() %}
+                                                <li><strong>{{ sub_metric.replace('_', ' ').title() }}:</strong> {{ "%.4f"|format(sub_value) }}</li>
+                                            {% endfor %}
+                                            </ul>
+                                        {% elif value is number %}
+                                            <p><strong>{{ metric.replace('_', ' ').title() }}:</strong> {{ "%.4f"|format(value) }}</p>
+                                        {% else %}
+                                            <p><strong>{{ metric.replace('_', ' ').title() }}:</strong> {{ value }}</p>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div class="column">
+                {% for competition in competitions[5:] %}
+                <div class="competition-card">
+                    <h2>{{ competition.replace('_', ' ').title() }}</h2>
+                    <form action="/evaluate" method="post" enctype="multipart/form-data">
+                        <input type="file" name="files[]" accept=".csv" required multiple>
+                        <input type="hidden" name="competition_name" value="{{ competition }}">
+                        <button type="submit">Evaluate</button>
+                    </form>
+
+                    {% if results and results.get(competition) %}
+                        {% for result in results[competition] %}
+                            {% if 'error' in result and result.error %}
+                                <div class="result error">
+                                    <p class="result-title">An error occurred for file: {{ result.filename }}</p>
+                                    <p>{{ result.error }}</p>
+                                </div>
+                            {% elif 'scores' in result %}
+                                <div class="result success">
+                                    <p class="result-title">Results for file: {{ result.filename }}</p>
+                                    {% for metric, value in result.scores.items() %}
+                                        {% if value is mapping %}
+                                            <p><strong>{{ metric.replace('_', ' ').title() }}:</strong></p>
+                                            <ul style="margin: 0; padding-left: 20px;">
+                                            {% for sub_metric, sub_value in value.items() %}
+                                                <li><strong>{{ sub_metric.replace('_', ' ').title() }}:</strong> {{ "%.4f"|format(sub_value) }}</li>
+                                            {% endfor %}
+                                            </ul>
+                                        {% elif value is number %}
+                                            <p><strong>{{ metric.replace('_', ' ').title() }}:</strong> {{ "%.4f"|format(value) }}</p>
+                                        {% else %}
+                                            <p><strong>{{ metric.replace('_', ' ').title() }}:</strong> {{ value }}</p>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
 </body>
 </html>
