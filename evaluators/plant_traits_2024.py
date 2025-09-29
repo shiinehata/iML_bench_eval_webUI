@@ -38,7 +38,7 @@ def evaluate_predictions(df_truth, df_pred):
         df_truth = df_truth.sort_values('id').reset_index(drop=True)
         df_pred = df_pred.sort_values('id').reset_index(drop=True)
 
-        trait_labels = ['X4_mean', 'X11_mean', 'X18_mean', 'X26_mean', 'X50_mean', 'X3112_mean']
+        trait_labels = ['X4', 'X11', 'X18', 'X50', 'X26', 'X3112']
         r2_scores = []
         rmse_scores = []
 
